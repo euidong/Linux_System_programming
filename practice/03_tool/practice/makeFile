@@ -1,0 +1,19 @@
+# This is a typical Makefile
+cc= gcc
+
+
+TARGET = hello
+OBJS = hello.o mystrcpy.o
+
+
+$(TARGET) : $(OBJS)
+	gcc -o $(TARGET) $(OBJS)
+
+hello.o : mystrcpy.h hello.c
+	gcc -c -o hello.o hello.c
+
+mystrcpy.o : mystrcpy.h mystrcpy.c
+	gcc -c -o mystrcpy.o mystrcpy.c
+
+clean :
+	rm -f core $(TARGET) $(OBJS) 
