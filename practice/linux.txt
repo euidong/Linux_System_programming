@@ -156,6 +156,7 @@ write(fd, buf, sizeof(buf));
 sprintf(buf, "hello");
 read(fd, buf, sizeof(buf));
 close(fd);
+remove(".fifo"); // server에서는 signal을 통해서 종료해주는 것이 맞다.
 
 - Shared memory
 #include <sys/types.h>
@@ -176,7 +177,7 @@ sprintf(buf, "%s", ptr);
 shmctl(shmId, IPC_RMID, 0);
 
 3. semaphore
-- posix 
+- posix
 sem_t Mutex;
 sem_init(&Mutex, 0, 1);
 sem_wait(&Mutex);
@@ -196,7 +197,7 @@ semWait(SemId);
 
 
 4. mutex / condition variable
-#include <pthread.h>
+ll#include <pthread.h>
 pthread_mutex_t mutex;
 pthread_mutex_init(&mutex, NULL);
 pthread_mutex_lock(&mutex);
