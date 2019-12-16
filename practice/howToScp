@@ -1,0 +1,2 @@
+directory : scp -P 7877 -r test_mid/ lsp41@celinux2.khu.ac.kr:/home/lsp41/test_mid
+file : scp -P 7877 howToScp lsp41@celinux2.khu.ac.kr:/home/lsp41/howToScp

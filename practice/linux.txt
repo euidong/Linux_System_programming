@@ -1,0 +1,351 @@
+기말고사용 library
+
+0. 기본
+- 사용자 input 받기
+fgets(buf, sizeof(buf), stdin);
+
+
+- stdout fflush 하기
+fflush(stdout);
+
+
+- string copy하기
+#include <string.h>
+char buf[MAX_BUF];
+char *buf2 = "hello";
+sprintf(buf, "%s", buf2);
+
+
+- random 숫자 만들기
+srand(0x8888);
+int randNum = rand() % 100;
+
+
+- process fork하기
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+int pid;
+int state; // return value
+pid = fork();
+wait(&state);
+waitpid(pid, &state, 0);
+
+
+- thread 생성하기
+#include <pthread.h>
+void *threadFunction (void *dummy) {;}
+pthread_t tid;
+int input;
+int output;
+pthread_create(&tid, NULL, (void *)threadFunction, (void *)&input);
+pthread_join(tid, (void *)&output);
+
+
+- quick Sort하기
+int partition(char *file_name[], int front, int back){
+    int middle = front;
+    char *pivot = file_name[front];
+    int i;
+    char* tmp;
+    for (i = front+1; i <= back; i++) {
+        if(strcmp(pivot,file_name[i]) > 0){
+            tmp = file_name[++middle];
+            file_name[middle] = file_name[i];
+            file_name[i] = tmp;
+        }
+    }
+    file_name[front] = file_name[middle];
+    file_name[middle] = pivot;
+
+    return middle;
+}
+
+void quickSort(char *file_name[], int front, int back){
+    if (front+1 == back) {
+        if(strcmp(file_name[front], file_name[back]) > 0) {
+            char *tmp = file_name[front];
+            file_name[front] = file_name[back];
+            file_name[back] = tmp;
+        }
+        return;
+    }
+    else if (front >= back)
+        return;
+    int middle = partition(file_name, front, back);
+    quickSort(file_name, front, middle-1);
+    quickSort(file_name, middle+1, back);
+}
+
+1. file / directory
+- file open
+open과 fopen의 차이점은 file descriptor를 return 하느냐 아니면 file pointer를 return하느냐의 차이다.
+open으로 열경우 많은 옵션 추가가 가능하다.
+int fd;
+fd = open("hello.txt", O_RDWR | O_CREAT);
+FILE *fp;
+fp = fopen("hello.txt", "r+");
+
+
+- read/write
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+file descriptor는 read/write
+char buf[MAX_BUF];
+read(0, (void *)buf, sizeof(buf));
+write(1, (void *)buf, sizeof(buf));
+
+
+file pointer는 fprintf, fgets가 가장 일반적
+#include <stdio.h>
+char buf[MAX_BUF];
+fgets(buf, sizeof(buf), stdin);
+fprintf(stdout, "%s", buf);
+
+
+- file 정보 얻기
+#include <sys/types.h>
+#include <sys/stat.h>
+struct stat buf;
+int fd = open("hello.txt", O_RDWR);
+int fstat(fd, &buf); lstat("hello.txt", &buf);
+
+
+- 현재 directory 읽기
+DIR *dp;
+struct dirent *dep;
+dp = opendir(".");
+while(dep = readdir(dp)) {
+    printf("%s\n",dep->d_name);
+}
+
+
+2. IPC 
+- Pipe
+#include <unistd.h>
+int fd[2];
+int pid;
+char buf[256];
+pipe(fd);
+pid = fork();
+if (pid == 0) {
+    close(fd[0]);
+    close(1);
+    dup(fd[1]);
+    sprintf(buf, "hello");
+    write(fd[1], buf, sizeof(buf));
+}
+else {
+    close(fd[1]);
+    close(stdin);
+    dup2(fd[0], 0);
+    read(fd[0], buf, sizeof(buf));
+}
+
+
+- FIFO
+#include <sys/types.h>
+#include <sys/stat.h>
+mkfifo(".fifo", 0660);
+int fd;
+char buf[256];
+fd = open(".fifo", O_RDWR);
+
+write(fd, buf, sizeof(buf));
+sprintf(buf, "hello");
+read(fd, buf, sizeof(buf));
+close(fd);
+
+- Shared memory
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#define MY_ID 41
+#define SHM_KEY 0x9000 + MY_ID
+#define SHM_MODE (SHM_R | SHM_W | SHM_CREAT)
+#define SHM_SIZE 1024
+int shmId;
+char *ptr;
+char buf[256];
+shmId = shmget(SHM_KEY, SHM_SIZE, SHM_MODE);
+ptr = shmat(shmId, 0, 0);
+
+sprintf(ptr, "hello"); 
+sprintf(buf, "%s", ptr);
+shmctl(shmId, IPC_RMID, 0);
+
+3. semaphore
+- posix 
+sem_t Mutex;
+sem_init(&Mutex, 0, 1);
+sem_wait(&Mutex);
+sem_post(&Mutex);
+sem_destroy(&Mutex);
+
+
+-SystemV
+#include "semlib.h"
+#define MY_ID 41
+#define SEM_KEY 0x5000 + MY_ID
+int SemId;
+SemId = semInit(SEM_KEY); // 초기값 0
+semInitValue(SemId, 1); // 0으로 초기화
+semPost(SemId);
+semWait(SemId);
+
+
+4. mutex / condition variable
+#include <pthread.h>
+pthread_mutex_t mutex;
+pthread_mutex_init(&mutex, NULL);
+pthread_mutex_lock(&mutex);
+pthread_mutex_unlock(&mutex);
+pthread_mutex_destroy(&mutex);
+
+
+pthread_cond_t condition;
+pthread_cond_wait(&condtion, &mutex);
+pthread_cond_signal(&condition);
+pthread_cond_destroy(&condition);
+
+5. socket udp /tcp
+- DNS 주소
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <ctype.h>
+#include <netdb.h>
+struct hostent *hp;
+if (isdigit(argv[1][0])) {
+    servAddr.sin_addr.s_addr = inet_addr(argv[1]);
+}
+else {
+    if ((hp = gethostbyname(argv[1])) < 0) {
+        fprintf(stderr, "Unknown host: %s\n", argv[1]);
+    }
+    memcpy(&servAddr.sin_addr, hp->h_addr, hp->h_length); 
+}
+
+
+- TCP
+<server>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <string.h>
+#define MY_ID 41
+#define SERV_PORT 0x8000 +MY_ID
+#define MAX_BUF 256
+
+int sockfd, newSockfd;
+struct sockaddr_in servAddr, cliAddr;
+int cliAddrLen = sizeof(cliAddr);
+char buf[MAX_BUF];
+int n;
+if ((sockfd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+    perror("socket");
+    exit(1);
+}
+bzero((char *)&servAddr, sizeof(servAddr));
+servAddr.sin_family = PF_INET;
+servAddr.sin_port = htons(SERV_PORT);
+servAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+if (bind(sockfd, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0) {
+    perror("bind");
+    exit(1);
+}
+listen(sockfd, 5);
+newSockfd = accept(sockfd, (struct sockaddr *)&cliAddr, &cliAddrLen);
+if (newSockfd < 0) {
+    perror("accept");
+    exit(1);
+}
+if ((n =read(newSockfd, buf, MAX_BUF)) < 0) {
+    perror("read");
+    exit(1);
+}
+sprintf(buf, "hello");
+if (write(newSockfd, buf, MAX_BUF) < 0) {
+    perror("write");
+    exit(1);
+}
+if (close(newSockfd) < 0) {
+    perror("close");
+    exit(1);
+}
+if (close(sockfd) < 0) {
+    perror("close");
+    exit(1);
+}
+<client>
+if (connect(sockfd, (struct sockaddr *)servAddr, servAddrLen) < 0) {
+    perror("connect");
+    exit(1);
+}
+
+- UDP
+<server>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <string.h>
+#define MY_ID 41
+#define SERV_PORT 0x8000 + MY_ID
+#define MAX_BUF 256
+
+int sockfd;
+struct sockaddr_in servAddr, cliAddr;
+int servAddrLen = sizeof(servAddr);
+int cliAddrLen = sizeof(cliAddr);
+char buf[MAX_BUF];
+if ((sockfd = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
+    perror("socket");
+    exit(1);
+}
+bzero((char *)&servAddr, servAddrLen);
+servAddr.sin_family = PF_INET;
+servAddr.sin_port = htons(SERV_PORT);
+servAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+if (bind(sockfd, (struct sockaddr *)&servAddr, &servAddrLen) < 0) {
+    perror("bind");
+    exit(1);
+}
+if (recvfrom(sockfd, buf, sizeof(buf), 0, (struct sockaddr *)&cliAddr,  cliAddrLen) <0) {
+    perror("recvfrom");
+    exit(1);
+}
+sprintf(buf, "hello");
+if (sendto(sockfd, buf, sizeof(buf), 0, (struct sockaddr *)&cliAddr, &cliAddrLen) < 0) {
+    perror("sendto");
+    exit(1);
+}
+<client>
+if (sendto(sockfd, buf, sizeof(buf), 0, (struct sockaddr *)&servAddr, servAddrLen) < 0) {
+    perror("sendto");
+    exit(1);
+}
+sprintf(buf, "hello");
+if (recvfrom(sockfd, buf, sizeof(buf), 0, (struct sockaddr *)&servAddr, &servAddrLen) < 0) {
+    perror("sendto");
+    exit(1);
+}
+
+- Multiplexing
+fd_set fdSet;
+int fd, fd2, count;
+
+FD_ZERO(&fdSet);
+FD_SET(fd, &fdSet);
+FD_SET(fd2, &fdSet);
+if ((count =select(2, &fdSet, (fd_set *)NULL, (fd_set *)NULL, (struct timeval *)NULL)) < 0) {
+    perror("select");
+    exit(1);
+}
+while (count--) {
+    if (FD_ISSET(fd, &fdSet)) {
+    }
+    else if (FD_ISSET(fd2, &fdSet)) {
+    }
+}
